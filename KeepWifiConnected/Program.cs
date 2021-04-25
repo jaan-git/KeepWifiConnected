@@ -19,6 +19,9 @@ namespace KeepWifiConnected
         static string fileLogName = @"";
         static string urlRequest = @"";
 
+        //使用队列存储配置连接的wifi名称
+        static Queue<string> wifiNames = new Queue<string>();
+
         static void Main()
         {
             if (!SetConfig())
@@ -30,25 +33,17 @@ namespace KeepWifiConnected
             Log("Start");
             while (true)
             {
-                string wifiNetworkName = GetWifiNetworkName();
-                if (wifiNetworkName.Length > 1)
+                if (IsInternetOn())
                 {
-                    Log("Wifi Network: " + wifiNetworkName);
-                    if (IsInternetOn())
-                    {
-                        Log("Internet ON");
-                    }
-                    else
-                    {
-                        Log("Internet OFF");
-                        WifiReconnect();
-                        Log("Reconnection");
-                    }
+                    Log("Internet ON");
                 }
                 else
                 {
-                    Log("No Wifi Network");
+                    Log("Internet OFF");
+                    WifiReconnect();
+                    Log("Reconnection");
                 }
+
                 Thread.Sleep(timeRecheck);
             }
 
@@ -129,7 +124,8 @@ namespace KeepWifiConnected
         {
             try
             {
-                string wifiNetworkName = GetWifiNetworkName();
+                string wifiNetworkName = wifiNames.Dequeue();
+                wifiNames.Enqueue(wifiNetworkName);
                 if (wifiNetworkName.Length > 1)
                 {
                     WifiDisconnect();
@@ -163,7 +159,8 @@ namespace KeepWifiConnected
             timeoutRequest = Convert.ToInt32(ConfigurationManager.AppSettings["TimeoutRequest"]);
             fileLogName = ConfigurationManager.AppSettings["FileLogName"];
             urlRequest = ConfigurationManager.AppSettings["UrlRequest"];
-            if (timeRecheck == 0 || timeoutRequest == 0 || urlRequest == "" || urlRequest == null)
+            wifiNames = new Queue<string>(ConfigurationManager.AppSettings["WiFi"].Split(','));
+            if (timeRecheck == 0 || timeoutRequest == 0 || urlRequest == "" || urlRequest == null || wifiNames.Count == 0)
             {
                 return false;
             }
